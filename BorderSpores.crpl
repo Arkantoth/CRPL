@@ -1,0 +1,191 @@
+# border_spores.crpl
+# Created on: 1/21/2015 1:18:07 PM
+# ------------------------------------------
+# BorderSpores.crpl
+# Created on: 11/2/2013 6:48:09 PM
+# ------------------------------------------
+# This script tries to emulate CW1 spores. Spores spawn in random cells along the edge of the map and target random
+# player units. The script also includes a warning indicator similar to the one spore towers create.
+
+
+# map borders that are allowed to spawn spores are set below
+# 0 means no spawn from that direction; has to be either 0 or 1
+# at least one side has to be set to 1
+$left:1
+$right:1
+$top:1
+$bottom:1
+
+# spore settings
+$initialDelay:9000	# time before the first wave spawns in frames (1800 frames = 1 minute)
+$nOfSpores:5		# number of spores spawned per interval
+$interval:1800		# time between wave spawns in frames
+$delay:30		# time between individual spores within a wave
+$payload:10		# amount of creeper each spore carries
+$health:1		# health of the spores; default is 1
+
+# warning settings
+$backgroundImg:"Custom0_256"	# image slot for the red background of the warning message
+$displayWarningTime:1800	# from this time point of the countdown onward the warning message is displayed (-1 to deactivate)
+$playSoundTime:1800		# at this point of the countdown the warning sound is played (-1 to deactivate)
+$alternativeMode:0		# set to 1 if you want to use this script and spore towers at the same time to avoid
+				# overlap of warning messages
+$sound:"Misc19"			# warning sound
+$backgroundScaleX:29.15		# parameters to tweak the background image
+$backgroundScaleY:8
+$backgroundPosX:61.5
+
+$name:"BorderSporeSpawner"	# allows other CRPL cores to find the spawner by using GetCoresWithVar
+
+once
+	@Setup	
+	SetTimer0(<-initialDelay)
+	0 ->counter
+	0 ->soundPlayed
+endonce
+
+# check if spores need to be spawned
+if(GetTimer0 eq0 and(GetTimer1 eq0))
+	if(<-counter lt(<-nOfSpores))
+		if (<-delay gt(0))
+		# create one spore and wait for the delay
+			@PickOrigin
+			@PickTarget
+			CreateSpore(<-originX <-originY <-targetX <-targetY <-health <-payload)
+			<-counter add(1) ->counter
+			SetTimer1(<-delay)
+		else
+		# create all spores at once
+			do(<-nOfSpores 0)
+				@PickOrigin
+				@PickTarget
+				CreateSpore(<-originX <-originY <-targetX <-targetY <-health <-payload)
+			loop
+			<-nOfSpores ->counter
+		endif
+		PlaySound("SporeFire")
+	else
+	# all spores spawned, reset timer and warning
+		SetTimer0(<-interval)
+		0 ->counter
+		0 ->soundPlayed
+		@DeactivateWarning
+	endif
+endif
+
+# display warning message
+if(<-warningActive)
+	if(GetTimer0 mod(30) eq0)
+		@SetWarningText
+	endif
+else
+	if(GetTimer0 lt(<-displayWarningTime))
+		@ActivateWarning
+	endif
+endif
+
+# play warning sound
+if(not(<-soundPlayed) and(GetTimer0 lt(<-playSoundTime)))
+	1 ->soundPlayed
+	PlaySound(<-sound)
+endif
+
+:PickOrigin
+# picks a random cell at the edge of the map
+	GetListElement(<-Sides RandInt(0 GetListCount(<-Sides))) ->side
+	if(<-side eq("left") or(<-side eq("right")))
+		RandInt(0 MapHeight) ->originY
+		if(<-side eq("left"))
+			0 ->originX
+		else
+			MapWidth ->originX
+		endif
+	else
+		RandInt(0 MapHeight) ->originX
+		if(<-side eq("top"))
+			0 ->originY
+		else
+			MapHeight ->originY
+		endif
+	endif
+
+:PickTarget
+# picks a random player unit as target, or a random cell if no unit is present
+	CreateList ->Targets
+	GetUnitsInRange(0 0 9999) ->nOfTargets 
+	AppendStackToList(<-Targets)
+	GetListElement(<-Targets RandInt(0 <-nOfTargets)) ->target
+	if(<-target neq0)
+		GetUnitAttribute(<-target CONST_COORDY) ->targetY
+		GetUnitAttribute(<-target CONST_COORDX) ->targetX
+	else
+		RandCoords ->targetY ->targetX
+	endif
+	
+:ActivateWarning
+# enables the red warning strip right above the build menu
+	if(not(<-warningActive))
+		SetImageColor(Self "background" 255 0 0 255)
+		@SetWarningText
+		1 ->warningActive
+	endif
+	
+:DeactivateWarning
+# disables the red warning strip right above the build menu
+	if(<-warningActive )
+		SetImageColor(Self "background" 255 0 0 0)
+		SetText("")
+		0 ->warningActive
+	endif
+
+:SetWarningText
+# converts timer into text
+	GetTimer0 div(1800) ->minutes
+	GetTimer0 mod(1800) div(30) ->seconds
+	if(<-seconds lt(10))
+		"0" concat(<-seconds) ->seconds
+	endif
+	SetText(<-nOfSpores concat(" spore(s) in ") concat(<-minutes) concat(":") concat(<-seconds))
+	
+:Setup
+# one-time setup for everything
+	SetUnitAttribute(Self CONST_COUNTSFORVICTORY 0)
+	SetUnitAttribute(Self CONST_TAKEMAPSPACE 0)
+	SetUnitAttribute(Self CONST_NULLIFIERDAMAGES 0)
+	# the following lines anchor the CRPL core to the top of the build menu
+	SetScreenMode(true)
+	SetScreenPixelCoordX(ScreenWidth div(2) sub(62))
+	if(<-alternativeMode)
+		SetScreenPixelCoordY(130)
+	else
+		SetScreenPixelCoordY(110)
+	endif
+	# configures text size and position, but does not display anything yet	
+	SetText("")
+	SetTextSize(0.6)
+	SetTextColor(255 255 255 255)
+	SetTextAnchor("MiddleLeft")
+	# same for the text background
+	SetImage(Self "main" "NONE")
+	SetImage(Self "background" <-backgroundImg)
+	SetImageScale(Self "background" <-backgroundScaleX <-backgroundScaleY)
+	SetImagePositionX(Self "background" <-backgroundPosX)
+	SetImageColor(Self "background" 255 0 0 0)
+	# create a list of valid spawn locations, needed for @PickOrigin
+	<-left add(<-right) add(<-top) add(<-bottom) ->sideCount
+	CreateList ->Sides
+	if(<-left eq(1))
+		AppendToList(<-Sides "left")
+	endif
+	if(<-right eq(1))
+		AppendToList(<-Sides "right")
+	endif
+	if(<-top eq(1))
+		AppendToList(<-Sides "top")
+	endif
+	if(<-bottom eq(1))
+		AppendToList(<-Sides "bottom")
+	endif
+	
+:awake
+@Setup

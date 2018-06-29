@@ -1,0 +1,143 @@
+# AntiCreeperGenerator.crpl
+# Created on: 1/18/2015 2:18:47 PM
+# ------------------------------------------
+
+$unit_name:"anti_creeper_generator"
+$parent:"self"
+
+$unit_start_hp:1
+$unit_start_mp:0
+$unit_max_hp:1
+$unit_max_mp:2000
+$unit_info_display:1
+
+$anti_creeper_amount:-20
+$anti_creeper_amount_max:-2000
+$upgrade_amount:-1
+$upgrade_cost:10
+$upgrade_cost_increase:10
+$creation_cost:10
+
+Once
+	SetUnitAttribute(SELF CONST_COUNTSFORVICTORY 0)
+	SetUnitAttribute(SELF CONST_NULLIFIERDAMAGES 0)
+	SetUnitAttribute(SELF CONST_MAXHEALTH <-unit_max_hp)
+	SetUnitAttribute(SELF CONST_HEALTH <-unit_start_hp)
+	SetUnitAttribute(SELF CONST_MAXAMMO <-unit_max_mp)
+	SetUnitAttribute(SELF CONST_AMMO <-unit_start_mp)
+	0 ->upgrade_xp
+	0 ->mode
+	1 ->upgrade_enable
+endonce
+
+if(<-mode eq0)
+	if(GetUnitAttribute(SELF CONST_AMMO) gte (<-creation_cost))
+		SetUnitAttribute(SELF CONST_AMMO GetUnitAttribute(Self CONST_AMMO) sub(<-creation_cost))
+		AddCreeper(CurrentCoords <-anti_creeper_amount)
+		<-upgrade_xp add( <-creation_cost div(10)) ->upgrade_xp
+	endif
+else
+	if(GetUnitAttribute(SELF CONST_AMMO) gte (<-creation_cost))
+		SetUnitAttribute(SELF CONST_AMMO GetUnitAttribute(Self CONST_AMMO) sub(<-creation_cost))
+		AddCreeper(CurrentCoords <-anti_creeper_amount div(10))
+		<-upgrade_xp add(<-creation_cost) ->upgrade_xp
+	endif
+endif
+
+if(<-upgrade_enable)
+	if(<-upgrade_xp gte (<-upgrade_cost))
+		if(<-anti_creeper_amount gt(<-anti_creeper_amount_max))
+			<-anti_creeper_amount add(<-upgrade_amount) ->anti_creeper_amount
+			<-upgrade_xp sub(<-upgrade_cost) ->upgrade_xp 
+			<-upgrade_cost add(<-upgrade_cost_increase) ->upgrade_cost
+		else
+			@lock_upgrade
+			@switch_mode
+		endif
+	endif
+endif
+
+if(GetMouseButtonDown(1))
+	if(GetScriptVar(SELF "Selectable.crpl" "selected") eq(1))
+		if(<-upgrade_enable)
+			@switch_mode
+		else
+			SetText("Max upgrade Reached")
+		endif
+	endif
+endif
+
+@unit_info
+
+:lock_upgrade
+0 ->upgrade_enable
+
+:switch_mode
+if(<-mode eq0)
+	1 ->mode
+else
+	0 ->mode
+endif
+
+:anti_creeper_cost
+concat("Anti creeper creation cost :  " <-creation_cost ) ->function_value
+<-function_value
+
+:anti_creeper_amount
+if(<-mode eq0)
+	concat("Anti creeper amount :  " <-anti_creeper_amount ) ->function_value
+else
+	concat("Anti creeper amount :  " <-anti_creeper_amount div(10)) ->function_value
+endif
+<-function_value
+
+
+:mode
+if(<-mode eq0)
+	"Anti Creeper production x 10 " ->function_value
+else
+	"XP x 10" ->function_value
+endif
+<-function_value
+
+:unit_hp
+concat("HP : " concat(GetUnitAttribute(self CONST_HEALTH ) concat(" / " GetUnitAttribute(self CONST_MAXHEALTH)))) ->function_value
+<-function_value
+
+:unit_mp
+concat("MP : " concat(round(GetUnitAttribute(self CONST_AMMO) 4) concat(" / " GetUnitAttribute(self CONST_MAXAMMO)))) ->function_value
+<-function_value
+
+:upgrade_xp
+concat("Upgrade XP : " <-upgrade_xp) ->function_value
+concat(<-function_value " / " ) ->function_value
+concat(<-function_value <-upgrade_cost) ->function_value
+<-function_value
+
+:upgrade_amount_info
+concat("Upgrade amount : " <-upgrade_amount) ->function_value
+<-function_value
+
+:ligne
+"
+" ->ligne_string
+	<-ligne_string
+
+:unit_info
+if(<-unit_info_display)
+	CreateList ->list_info
+	AppendToList(<-list_info @unit_hp)
+	AppendToList(<-list_info @unit_mp)
+	AppendToList(<-list_info @anti_creeper_amount)
+	AppendToList(<-list_info @anti_creeper_cost)
+	AppendToList(<-list_info @mode)
+	AppendToList(<-list_info @upgrade_xp)
+	AppendToList(<-list_info @upgrade_amount_info)
+	concat("Informations" @ligne) ->unit_info_string
+	do(GetListCount(<-list_info) 0)
+		concat(<-unit_info_string concat(GetListElement(<-list_info I) @ligne)) ->unit_info_string
+	loop
+	SetPopupText(<-unit_info_string)
+else
+	SetPopupText("No Informations")
+endif

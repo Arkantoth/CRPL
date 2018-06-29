@@ -1,0 +1,48 @@
+# Moveable.crpl
+# Created on: 1/18/2015 2:56:39 PM
+# ------------------------------------------
+
+$move_flag:1
+$selectable_crpl:"Selectable.crpl"
+
+Once
+	OperateWhilePaused(FALSE)
+Endonce
+
+@GetMouseCoords
+
+if(<-move_flag)
+	if(distance(CurrentX CurrentY <-mouse_x <-mouse_y) gt(2))
+		if(GetScriptVar(SELF <-selectable_crpl "selected"))
+			if(GetQueuedMoveCount eq0)
+				if(GetMouseButtonDown(0))
+					@MoveUnit(<-mouse_x <-mouse_y)
+				else
+					#@ShowDestinationUnit(<-mouse_x <-mouse_y)
+				endif
+			else
+				if(GetMouseButtonDown(0))
+					ClearQueuedMoves
+					AbortMove
+					@MoveUnit(<-mouse_x <-mouse_y)
+				else
+					#@ShowDestinationUnit(<-mouse_x <-mouse_y)
+				endif
+			endif
+		endif
+	endif
+else
+	ClearQueuedMoves
+endif
+
+:GetMouseCoords
+GetMouseCell ->mouse_y ->mouse_x
+
+:MoveUnit
+->unit_destination_y ->unit_destination_x
+if(GetUnitAt(<-unit_destination_x <-unit_destination_y) eq(-1))
+	QueueMove(<-unit_destination_x <-unit_destination_y 1)
+endif
+
+:Awake
+	OperateWhilePaused(FALSE)

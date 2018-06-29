@@ -1,0 +1,72 @@
+# Selectable.crpl
+# Created on: 1/7/2015 2:37:39 PM
+# ------------------------------------------
+
+$selectable:1
+$selectImage:"Custom1_256"
+once
+	OperateWhilePaused(TRUE)
+	3.141592653589793 2.0 mul ->twopi
+	0 ->selected
+endonce
+@GetMouseCoords
+
+if(distance(CurrentX CurrentY <-mouse_x <-mouse_y) lt(2))
+	if(<-selectable)
+		if(GetMouseButtonDown(0))
+			if(<-selected eq(1))
+				0 ->selected
+				@enableSelect
+			else
+				1 ->selected
+				@disableSelect
+			endif
+		endif
+	else
+		@enableSelect
+		0 ->selected
+	endif
+endif
+
+if(<-selectable)
+	if(<-selected)
+		if(<-selector_show eq0)
+			@ShowSelectedIndicator
+		endif
+		@rotate_selector
+	else
+		@HideSelectedIndicator
+	endif
+else
+	@HideSelectedIndicator
+endif
+
+:disableSelect
+EnableAlternateControlMode(true)
+
+:EnableSelect
+EnableAlternateControlMode(false)
+
+:UserCancelAction
+0 ->selected
+@HideSelectedIndicator
+@enableSelect
+
+:rotate_selector
+SetImageRotation(Self "Select" <-rot add(0.03) if(dup <-twopi gt) sub(<-twopi) endif dup ->rot)
+
+:ShowSelectedIndicator
+SetImage(Self "Select" <-selectImage)
+SetImagePositionZ(Self "Select" -4)
+0.0 ->rot
+1 ->selector_show
+
+:HideSelectedIndicator
+SetImage(Self "Select" "None")
+0 ->selector_show
+
+:GetMouseCoords
+GetMouseCell ->mouse_y ->mouse_x
+
+:Awake
+OperateWhilePaused(TRUE)

@@ -1,0 +1,38 @@
+# beam.crpl
+# Created on: 12/19/2014 12:20:57 AM
+# ------------------------------------------
+
+# Credit to PAC templates for original CRPL
+
+# X coordonates of target
+$target_x:0
+# Y coordonates of target
+$target_y:0
+# Beam image
+$beam_image:"custom0"
+# Flag : Show the beam or hide it
+$show:1
+
+if(<-show)
+	@show
+else
+	@hide
+endif
+
+:show
+	CurrentY sub(<-target_y) ->distance_y 
+	<-target_x sub(CurrentX) ->distance_x
+	#Move this code to once if we stop unsetting the image with Setimagecolor( 255 0 0 0) to hide beam on load)
+	SetImage(Self "Line" <-beam_image)
+	# Thanks to PAC templates for this I wasn't able to do it myself
+	SetImageScale(Self "Line" Distance(CurrentCoords <-target_x <-target_y) div(3) 1.0)
+	# Thanks to PAC templates for this I wasn't able to do it myself
+	SetImageRotation(Self "Line" atan2(<-distance_y <-distance_x))
+	# Z-index -2 ... do I need to change that ?
+	SetImagePosition(Self "Line" <-distance_x mul(4.0) <-distance_y mul(4.0) -2)
+	# Beam color red
+	SetImageColor(Self "Line" 255 0 0 255)
+:hide
+	# Does unsetting the image and resetting the image causes lag ?
+	# SetImageColor(Self "Line" 255 0 0 0)
+	SetImage(Self "Line" "NONE")

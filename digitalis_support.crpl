@@ -1,0 +1,37 @@
+# digitalis_support.crpl
+# Created on: 12/19/2014 2:48:58 AM
+# ------------------------------------------
+
+# interval at which the CRPL tower support digitalis (in frames)
+$digitalis_support_interval:1
+# Flag  is digitalis support active
+$digitalis_support_active:1
+# Mode of digitalis support 0 : single cell 1 : radius 
+$digitalis_support_mode:0
+
+# Radius of digitalis support
+#$digitalis_support_radius:0
+
+once
+	SetTimer1(<-digitalis_support_interval)
+endonce
+
+if(<-digitalis_support_active)
+	if(GetTimer1 eq0)
+		#mode 0 single cell support
+		if(<-digitalis_support_mode eq0)
+			SetDigitalis(CurrentCoords 1)
+		else
+			#mode 1 radius support mode
+			#TODO  add digitalis_support_radius variable
+			do (CurrentY add(2) CurrentY sub (1) )
+				do (CurrentX add(2) CurrentX sub(1))
+					if(GetDigitalisGrowth(I J))
+						SetDigitalis(I J 1)
+					endif	
+				Loop
+			Loop
+		endif
+		SetTimer1(<-digitalis_support_interval)
+	endif
+endif
