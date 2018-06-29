@@ -1,0 +1,22 @@
+# debug.crpl
+# Created on: 1/18/2015 2:41:15 PM
+# ------------------------------------------
+
+$debug_flag:1
+
+once
+	if(<-debug_flag)
+		@show_debug
+	else
+		@hide_debug
+	endif
+endonce
+
+
+:show_debug
+ClearTraceLog
+ShowTraceLog
+
+:hide_debug
+ClearTraceLog
+HideTraceLog

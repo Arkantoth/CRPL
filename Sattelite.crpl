@@ -1,0 +1,188 @@
+# Sattelite.crpl
+# Created on: 11/2/2014 4:27:40 PM
+# ------------------------------------------
+# This Script is derived from story mission Magnetar
+
+
+$field_strength:10000
+$field_image:""
+
+$orbit_distance:0
+$orbit_speed:0.001
+
+$creeper_amount:20
+$creeper_amount_upgrade_cost:200
+$creeper_amount_upgrade:1
+$creeper_interval:1
+$list_index:0
+
+$sattelite_target_X:127
+$sattelite_target_Y:127
+
+$sattelited:0
+
+$debug:0
+$info_display:1
+
+once
+	@debug
+	SetUnitAttribute(self CONST_CREATEPZ 0)
+	SetUnitAttribute(self CONST_SUPPORTSDIGITALIS true)
+	SetUnitAttribute(self CONST_MAXAMMO 200.0)
+	SetUnitAttribute(self CONST_SHOWAMMOBAR true)
+	0.0 ->mp
+	0.1 ->mp_rate
+	0 ->sattelite_angle
+	0 ->set
+	@orbit_distance
+	@coord_to_pixel(<-orbit_distance) ->orbit_distance_pixel
+	@coord_to_pixel(<-sattelite_target_X) ->sattelite_target_X_pixel
+	<-sattelite_target_X_pixel add(4) ->sattelite_target_X_pixel
+	@coord_to_pixel(<-sattelite_target_Y) ->sattelite_target_Y_pixel		
+	<-sattelite_target_Y_pixel add(12) ->sattelite_target_Y_pixel
+	@sattelite_initial
+	SetTimer0(<-creeper_interval)
+	<-orbit_speed ->orbit_save
+endonce
+
+@creeper_to_mp
+@creeper_emit
+@update_amount
+@checkNullifier
+@unit_info
+
+if(GetQueuedMoveCount eq0)
+	if(<-set eq0)
+		1 ->set
+		SetScriptVar(<-sattelited "Loki.crpl" "wait" 0)
+	endif
+	<-sattelite_angle add(<-orbit_speed) ->sattelite_angle
+
+	@sattelite_position
+endif
+
+:update_amount
+if(<-mp gte(<-creeper_amount_upgrade_cost))
+	<-mp sub(<-creeper_amount_upgrade_cost) ->mp
+	<-creeper_amount add(<-creeper_amount_upgrade) ->creeper_amount
+endif
+
+:checkNullifier
+#reduce speed if nullifier in range
+if(GetUnitCountInRange(CurrentX CurrentY 20) neq0)
+	if(<-orbit_save gt(0))
+		0.001 ->orbit_speed
+	else
+		-0.001 ->orbit_speed
+	endif
+else
+	<-orbit_save ->orbit_speed
+endif
+
+#use current coords to set orbit distance if orbit_distance set to 0
+:orbit_distance
+if(<-orbit_distance eq0)
+	distance(<-sattelite_target_X <-sattelite_target_Y CurrentX CurrentY) ->orbit_distance
+endif
+
+:coord_to_pixel
+->coord_local
+<-coord_local mul(8) ->function_value
+<-function_value
+
+#Emit creeper at current Location
+:Creeper_emit
+if(GetTimer0 eq0)
+	SetCreeperNoLower(CurrentCoords <-creeper_amount)
+	SetTimer0(<-creeper_interval)
+endif
+
+
+:sattelite_initial
+<-sattelite_target_X add(<-orbit_distance) ->destination
+QueueMove(<-destination <-sattelite_target_Y 1)
+
+
+#Set the Position of the core against the Target sattelited
+:Sattelite_position
+	cos(<-sattelite_angle) mul(<-orbit_distance_pixel) ->sattelite_x	
+	sin(<-sattelite_angle) mul(<-orbit_distance_pixel) ->sattelite_y
+	
+	<-sattelite_x add(<-sattelite_target_X_pixel) ->sattelite_x
+	<-sattelite_y add(<-sattelite_target_Y_pixel) ->sattelite_y
+	
+	SetUnitAttribute(Self CONST_PIXELCOORDX <-sattelite_x)
+	SetUnitAttribute(Self CONST_PIXELCOORDY <-sattelite_y)
+
+:creeper_to_mp
+if(<-mp lt(GetUnitAttribute(self CONST_MAXAMMO)))
+	GetCreeper(CurrentCoords) ->absorbed_creeper
+	if(<-absorbed_creeper gt(0))
+		<-absorbed_creeper div(<-creeper_amount) ->absorbed_creeper
+		SetCreeper(CurrentCoords 0)
+		<-mp add(<-absorbed_creeper mul(<-mp_rate)) ->mp
+		SetUnitAttribute(self CONST_AMMO <-mp)
+	endif
+else
+	GetUnitAttribute(self CONST_MAXAMMO) ->mp 
+	SetUnitAttribute(self CONST_AMMO <-mp)
+endif
+
+:debug
+if(<-debug)
+	ClearTraceLog
+	ShowTraceLog
+else
+	ClearTraceLog
+	HideTraceLog
+endif
+
+:ligne
+"
+" ->ligne_string
+	<-ligne_string
+
+:creeper_amount
+concat("Amount : " <-creeper_amount) ->function_value
+<-function_value
+
+:creeper_amount_upgrade
+concat(concat(concat(concat("Amount Upgrade: " <-creeper_amount_upgrade) " for ") <-creeper_amount_upgrade_cost ) " MP") ->function_value
+<-function_value
+
+
+:creeper_interval
+"Interval : " ->interval_string
+round(div(asfloat(<-creeper_interval) 30.0) 2) ->interval_number_formatted
+concat(<-interval_string <-interval_number_formatted) ->function_value
+<-function_value
+
+:unit_hp
+concat("HP : " concat(round(GetUnitAttribute(self CONST_MAXHEALTH) 2) concat(" / " GetUnitAttribute(self CONST_MAXHEALTH)))) ->function_value
+<-function_value
+
+:unit_mp
+concat("MP : " concat(round(<-mp 2) concat(" / " GetUnitAttribute(self CONST_MAXAMMO)))) ->function_value
+<-function_value
+
+:unit_info
+if(<-info_display)
+	CreateList ->list_info
+	AppendToList(<-list_info @unit_hp)
+	AppendToList(<-list_info @unit_mp)
+	AppendToList(<-list_info @creeper_amount)
+	AppendToList(<-list_info @creeper_amount_upgrade)
+	AppendToList(<-list_info @creeper_interval)
+	concat("Informations" @ligne) ->unit_info_string
+	do(GetListCount(<-list_info) 0)
+		concat(<-unit_info_string concat(GetListElement(<-list_info I) @ligne)) ->unit_info_string
+	loop
+	SetPopupText(<-unit_info_string)
+else
+	SetPopupText("No Informations")
+endif
+
+:Destroyed
+if(GetQueuedMoveCount neq0)
+	SetScriptVar(<-sattelited "Loki.crpl" "wait" 0)
+endif

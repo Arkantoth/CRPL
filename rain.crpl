@@ -1,0 +1,59 @@
+# rain.crpl
+# Created on: 10/19/2014 3:43:59 PM
+# ------------------------------------------
+
+$HP:20
+$MaxHP:2000
+$MaxMP:2000
+$RainCost:2000
+$HealCost:2000
+
+
+once
+	SetCreeperMax(2000000000)
+	SetUnitAttribute(self CONST_HEALRATE 0)
+	SetUnitAttribute(self CONST_MAXHEALTH 2000.0)	
+	SetUnitAttribute(self CONST_HEALTH 1.0)
+	SetUnitAttribute(self CONST_SHOWHEALTHBAR true)
+	SetUnitAttribute(self CONST_NULLIFIERDAMAGEAMT 0.5)
+	0.0 ->creeper_amount	
+	EnableTowerField(20 -2000000000 0 0 false)
+endonce
+
+GetCreeper(CurrentCoords) ->creeper_amount_local
+SetCreeper(CurrentCoords 0)
+add(<-creeper_amount <-creeper_amount_local) ->creeper_amount
+SetText(<-creeper_amount)
+
+if(<-creeper_amount gt(0.0))
+	SetUnitAttribute(self CONST_HEALTH <-creeper_amount)
+endif
+
+if(<-creeper_amount lt(0.0))
+	destroy(self 2)
+endif
+
+if(<-creeper_amount gte(1000.0))
+	if(not(<-message_displayed_50))
+		ShowGameEventTag("YELLOW" "EMITTER"  "Creeper Rainer" "50% charge"  GetUnitAttribute(Self CONST_PIXELCOORDX) GetUnitAttribute(Self CONST_PIXELCOORDY))
+		true ->message_displayed_50
+	endif
+endif
+
+if(<-creeper_amount gte(1500.0))
+	if(not(<-message_displayed_75))
+		ShowGameEventTag("RED" "EMITTER"  "Creeper Rainer" "75% charge ! Hurry !"  GetUnitAttribute(Self CONST_PIXELCOORDX) GetUnitAttribute(Self CONST_PIXELCOORDY))
+		true ->message_displayed_75
+	endif
+endif
+
+if(<-creeper_amount gte(2000.0))
+	if(not(<-message_displayed_charge))
+		ShowGameEventTag("RED" "EMITTER" "Creeper Rainer" "CAUTION ! RAIN INCOMING" GetUnitAttribute(Self CONST_PIXELCOORDX) GetUnitAttribute(Self CONST_PIXELCOORDY))
+	endif
+	false ->message_displayed_50
+	false ->message_displayed_75
+	sub(<-creeper_amount 2000) ->creeper_amount
+	PlaySound("misc19")
+	MakeRain(10 2000)
+endif

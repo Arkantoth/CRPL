@@ -1,0 +1,105 @@
+# emetteur_faiblissant.crpl
+# Created on: 10/15/2014 4:47:49 PM
+# ------------------------------------------
+
+$creeper_emmission:20
+$creeper_emmission_interval:1
+$creeper_change_interval:20
+$creeper_change_valeur:1
+$unit_infos_afficher:1
+$debug:0
+
+once
+	SetUnitAttribute(self CONST_HEALRATE 0)
+	SetUnitAttribute(self CONST_COUNTSFORVICTORY 0)
+	SetUnitAttribute(Self CONST_SNIPERTARGET FALSE)
+	SetUnitAttribute(Self CONST_BEAMTARGET FALSE)
+	SetUnitAttribute(Self CONST_NULLIFIERDAMAGES FALSE)
+	SetUnitAttribute(Self CONST_MAXHEALTH <-creeper_emmission)
+	SetUnitAttribute(Self CONST_HEALTH <-creeper_emmission)
+	SetTimer0(<-creeper_emmission_interval)
+	SetTimer1(<-creeper_change_interval)
+	@debug(<-debug)
+	@unit_info
+endonce
+
+if(<-creeper_emmission lte(0))
+	destroy(self 0)
+endif
+
+if(GetTimer1 eq0)
+	<-creeper_emmission sub(<-creeper_change_valeur) ->creeper_emmission
+	SetUnitAttribute(Self CONST_HEALTH <-creeper_emmission)
+	SetTimer1(<-creeper_change_interval)
+endif
+
+if (GetTimer0 eq0)
+	#creeper emission
+	SetCreeperNoLower(CurrentCoords <-creeper_emmission)
+	SetTimer0(<-creeper_emmission_interval)
+endif
+
+@unit_info
+
+:creeper_amount_change
+"Change countdown : " ->string
+GetTimer1 ->frames
+round(div(asfloat(<-frames) 30.0) 2) ->frames_number_formatted
+concat(<-string <-frames) ->function_value
+<-function_value
+
+:creeper_amount_change_value
+"Change value : " ->string
+concat(<-string <-creeper_change_valeur) ->function_value
+<-function_value
+
+:creeper_amount
+"Amount : " ->amount_string
+concat(<-amount_string <-creeper_emmission) ->function_value
+<-function_value
+
+:creeper_interval
+"Interval : " ->interval_string
+round(div(asfloat(<-creeper_emmission_interval) 30.0) 2) ->interval_number_formatted
+concat(<-interval_string <-interval_number_formatted) ->function_value
+<-function_value
+
+:ligne
+"
+" ->ligne_string
+<-ligne_string
+
+:unit_info
+if(<-unit_infos_afficher)
+	"Decaying Emitter : " ->unit_info
+	concat(<-unit_info @ligne) ->unit_info
+	concat(<-unit_info "Invulnerable") ->unit_info
+	concat(<-unit_info @ligne) ->unit_info
+	concat(<-unit_info @creeper_amount) ->unit_info
+	concat(<-unit_info @ligne) ->unit_info
+	concat(<-unit_info @creeper_interval) ->unit_info
+	concat(<-unit_info @ligne) ->unit_info
+	concat(<-unit_info @creeper_amount_change) ->unit_info
+	concat(<-unit_info @ligne) ->unit_info
+	concat(<-unit_info @creeper_amount_change_value) ->unit_info
+	concat(<-unit_info @ligne) ->unit_info
+	SetPopupText(<-unit_info)
+else
+	SetPopupText("")
+endif
+
+:debug
+->debug
+if(<-debug)
+	ClearTraceLog
+	ShowTraceLog
+else
+	ClearTraceLog
+	HideTraceLog
+endif
+
+:gameloaded
+	@unit_info
+	
+:awake
+	@unit_info

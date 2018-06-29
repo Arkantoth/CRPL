@@ -1,0 +1,42 @@
+# Magnetar.crpl
+# Created on: 7/19/2013 6:59:44 PM
+# ------------------------------------------
+
+$fieldStrength:10000
+$orbitDistance:79
+$orbitSpeed:0.001
+$creeper:20
+$creeper_interval:1
+$center:127
+
+once
+	0 ->mag_angle
+	<-orbitDistance mul(8) ->mag_distance
+	<-center mul(8) ->center_pixel
+	<-center_pixel add(4) ->center_pixel
+	@PositionMagnetar
+	SetTimer0(<-creeper_interval)
+endonce
+
+@Creeper_emit
+@PositionMagnetar
+
+<-mag_angle add(<-orbitSpeed) ->mag_angle
+
+
+:Creeper_emit
+if(GetTimer0 eq0)
+	SetCreeperNoLower(CurrentCoords <-creeper)
+	SetTimer0(<-creeper_interval)
+endif
+
+
+:PositionMagnetar
+	cos(<-mag_angle) mul(<-mag_distance) ->mag_x	
+	sin(<-mag_angle) mul(<-mag_distance) ->mag_y
+	
+	<-mag_x add(<-center_pixel) ->mag_x #The center of the map is at 80 (times 8 for pixels)
+	<-mag_y add(<-center_pixel) ->mag_y
+	
+	SetUnitAttribute(Self CONST_PIXELCOORDX <-mag_x)
+	SetUnitAttribute(Self CONST_PIXELCOORDY <-mag_y)

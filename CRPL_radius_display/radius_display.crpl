@@ -1,0 +1,84 @@
+# radius_display
+
+#Interface : Radius Display
+
+# TEMPLATE VARS
+$CRPL_INIT:0
+$CRPL_RUNNING:0
+$CRPL_INTERFACE:"radius_display"
+$CRPL_SCRIPT_NAME:"unit.crpl"
+
+# Unit Vars to watch
+$CRPL_UNIT_VARS:"unit_radius"
+
+#Specialized VARS
+
+$IMAGE_RADIUS:"Custom1_256"
+
+if(<-CRPL_INIT)
+	@interface_start
+endif
+
+if(<-CRPL_RUNNING)
+	GetMouseCell ->gmc_y ->gmc_x
+
+	CurrentX sub(<-unit_width) ->min_X
+	CurrentX add(<-unit_width) ->max_X
+	CurrentY sub(<-unit_height) ->min_Y
+	CurrentY add(<-unit_height) ->max_Y
+
+	if(@in_range_inclusive(<-gmc_x <-min_X <-max_X) and(@in_range_inclusive(<-gmc_y <-min_Y <-max_Y)))
+		# Mouse On unit"
+		if(not(<-radius_show_statut))
+			SetImage(self "radius" <-IMAGE_RADIUS)
+			SetImageScale(self "radius" <-radius_scale <-radius_scale)
+			SetImagePositionZ(self "radius" -1.0)
+			true ->radius_show_statut
+		endif
+	else
+		# Mouse Outside unit
+		if(<-radius_show_statut)
+			false ->radius_show_statut
+			SetImage(self "radius" "NONE")
+		endif
+	endif
+endif
+
+:interface_start
+OperateWhilePaused(true)
+@unit_height ->unit_height
+@unit_width ->unit_width
+false ->radius_show_statut
+SetImage(self "radius" "NONE")
+0.65 mul(asfloat(@unit_var_get(0)) ->radius_scale
+0 ->CRPL_INIT
+1 ->CRPL_RUNNING
+
+# Is valeur inside range ? 
+:in_range_inclusive
+->max ->min ->valeur
+if(<-valeur gte(<-min) and(<-valeur lte(<-max)))
+	true
+else
+	false
+endif
+
+:unit_height
+	GetUnitAttribute(self CONST_CELLHEIGHT) sub(1) div(2)
+
+:unit_width
+	GetUnitAttribute(self CONST_CELLWIDTH) sub(1) div(2)
+	
+:unit_var_set
+->var_new_value ->var_index
+SetScriptVar(Self <-CRPL_SCRIPT_NAME GetListElement(<-unit_vars_liste <-var_index) <-var_new_value)
+SetScriptVar(Self <-CRPL_SCRIPT_NAME "interfaces_reboot" 1)
+
+:unit_var_get
+->var_index
+GetScriptVar(Self <-CRPL_SCRIPT_NAME GetListElement(<-unit_vars_liste <-var_index))
+
+
+	
+:awake
+	OperateWhilePaused(true)

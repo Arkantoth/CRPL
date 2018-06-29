@@ -1,0 +1,123 @@
+# CRPL_UNIT.crpl
+# Created on: 4/17/2015 10:52:48 AM
+# ------------------------------------------
+
+$unit_name:"My Unit"
+$unit_interfaces:""
+$unit_info_display:1
+$unit_debug:0
+$crpl_extension:".crpl"
+
+$unit_display_separator:" : "
+$unit_display_list:"unit_name"
+$unit_display_list_string:"unit_name:Informations About "
+$unit_vars:""
+
+once
+	if(<-unit_debug)
+		ClearTracelog()
+		ShowTracelog()
+	else
+		HideTraceLog()
+	endif
+	SetPopupText("")
+	OperateWhilePaused(true)
+	
+	@vars_init
+	
+	split(<-unit_display_list " ") ->unit_display_liste
+	split(<-unit_display_list_string "|") ->unit_display_liste_string
+	@liste_associative_create(<-unit_display_liste_string) ->unit_vars_description
+	
+	@interfaces_start
+endonce
+
+if(<-interfaces_reboot)
+	@interfaces_start
+endif
+
+@unit_info
+
+:vars_init
+split(<-unit_vars " ") ->unit_vars_liste
+GetListCount(<-unit_vars_liste) ->unit_vars_count
+do(<-unit_vars_count 0)
+	split(GetListElement(<-unit_vars_liste I) ":") ->var_info
+	GetListElement(<-var_info 0) ->var_name
+	GetListElement(<-var_info 1) ->var_value
+	(<-var_name <-var_value) ->!
+loop
+
+#Start interface
+:interfaces_start
+split(<-unit_interfaces " ") ->unit_interfaces_liste
+GetListCount(<-unit_interfaces_liste) ->unit_interfaces_count
+do(<-unit_interfaces_count 0)
+	GetListElement(<-unit_interfaces_liste I) ->current_interface
+	concat(<-current_interface <-crpl_extension) ->current_interface_crpl
+	if(GetScriptVar(Self <-current_interface_crpl "CRPL_INTERFACE") eq (<-current_interface))
+		SetScriptVar(Self <-current_interface_crpl "CRPL_RUNNING" 0)
+		SetScriptVar(Self <-current_interface_crpl "CRPL_INIT" 1)
+	endif
+loop
+0 ->interfaces_reboot
+1 ->unit_display_update
+
+:ligne
+"
+" ->ligne_string
+<-ligne_string
+
+:unit_info
+if(<-unit_info_display)
+	if(<-unit_display_update)
+		CreateList ->unit_info_liste 
+		do(GetListCount(<-unit_display_liste) 0)
+			GetListElement(<-unit_display_liste I) ->unit_var_name
+			<-unit_var_name <-! ->unit_var_value
+			concat("liste_index_" <-unit_var_name) ->unit_var_description_index_name
+			<-unit_var_description_index_name <-! ->unit_var_description_index		
+			GetListElement(<-unit_vars_description <-unit_var_description_index) ->unit_var_description
+			concat(<-unit_var_description <-unit_display_separator) ->unit_var_description
+			SetListElement(<-unit_info_liste I concat(<-unit_var_description <-unit_var_value))
+		loop
+		@list_to_multi_line_string(<-unit_info_liste) ->info_string
+		CreateList ->unit_info_liste_interfaces
+		do(GetListCount(<-unit_interfaces_liste) 0)
+			GetListElement(<-unit_interfaces_liste I) ->current_interface
+			if(GetScriptVar(Self <-current_interface_crpl "CRPL_INTERFACE") eq (<-current_interface))
+				concat(<-current_interface <-crpl_extension) ->current_interface_crpl
+				concat(<-info_string @list_to_multi_line_string(GetScriptVar(Self <-current_interface_crpl "interface_info"))) ->info_string
+			endif
+		loop
+		SetPopupText(<-info_string)
+	endif
+else
+	SetPopupText("")
+endif
+
+# index:value
+
+:liste_associative_create
+->liste
+CreateList ->liste_associative
+do(GetListCount(<-liste) 0)
+	Split(GetListElement(<-liste I) ":") ->current_pair
+	concat("liste_index_" GetListElement(<-current_pair 0)) ->liste_index_name
+	I <-liste_index_name ->!
+	SetListElement(<-liste_associative I GetListElement(<-current_pair 1))
+loop
+<-liste_associative
+
+#Convert a list to a multi line string 
+#Each item of the list get one line
+:list_to_multi_line_string
+->liste
+"" ->liste_string
+do(GetListCount(<-liste) 0)
+	concat(<-liste_string concat(GetListElement(<-liste I) @ligne)) ->liste_string
+loop
+<-liste_string
+
+:awake
+1 ->unit_display_update

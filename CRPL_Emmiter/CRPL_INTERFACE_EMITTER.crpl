@@ -1,0 +1,47 @@
+# CRPL_INTERFACE_EMITTER.crpl
+# Created on: 4/18/2015 12:55:04 PM
+# ------------------------------------------
+
+#Interface : emmitter
+
+# TEMPLATE VARS
+$CRPL_INIT:0
+$CRPL_RUNNING:0
+$CRPL_INTERFACE:"CRPL_INTERFACE_EMITTER"
+$CRPL_SCRIPT_NAME:"CRPL_UNIT.crpl"
+
+# Unit Vars to watch
+$CRPL_UNIT_VARS:"unit_creeper_amount unit_creeper_interval"
+
+Once
+	ClearTraceLog
+	OperateWhilePaused(false)
+	split(<-CRPL_UNIT_VARS " ") ->unit_vars_liste
+Endonce
+
+if(<-CRPL_INIT)
+	@interface_start
+endif
+
+if(<-CRPL_RUNNING)
+	if(GetTimer0 eq0)
+		SetCreeperNoLower(CurrentCoords <-creeper_amount)
+		SetTimer0(<-creeper_interval)
+	endif
+endif
+
+:interface_start
+@unit_var_get(0) ->creeper_amount
+@unit_var_get(1) ->creeper_interval
+SetTimer0(<-creeper_interval)
+0 ->CRPL_INIT
+1 ->CRPL_RUNNING
+
+:unit_var_set
+->var_new_value ->var_index
+SetScriptVar(Self <-CRPL_SCRIPT_NAME GetListElement(<-unit_vars_liste <-var_index) <-var_new_value)
+SetScriptVar(Self <-CRPL_SCRIPT_NAME "interfaces_reboot" 1)
+
+:unit_var_get
+->var_index
+GetScriptVar(Self <-CRPL_SCRIPT_NAME GetListElement(<-unit_vars_liste <-var_index))

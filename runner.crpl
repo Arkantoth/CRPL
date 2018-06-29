@@ -1,0 +1,34 @@
+# runner.crpl
+# Created on: 1/21/2015 3:01:47 PM
+# ------------------------------------------
+
+$runner_active:1
+
+$runner_interval:60
+$runner_health:10
+$runner_payload:100
+$runner_max:-1
+
+once
+	SetTimer0(<-runner_interval)
+endonce
+
+
+if(<-runner_active)
+	if(GetTimer0 eq0)
+		if(<-runner_max eq(-1))
+			@create_runner
+			SetTimer0(<-runner_interval)
+		else
+			if(GetGlobalRunnerCount lt(<-runner_max))
+				@create_runner
+				SetTimer0(<-runner_interval)
+			else
+				0 ->runner_active
+			endif
+		endif
+	endif
+endif
+
+:create_runner
+CreateRunner(CurrentCoords 2 <-runner_health <-runner_payload)

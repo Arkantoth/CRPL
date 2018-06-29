@@ -1,0 +1,445 @@
+# sandbox_de.crpl
+# Created on: 6/29/2014 2:46:14 AM
+# ------------------------------------------
+# dynamic_emmitters.crpl
+# Created on: 5/14/2014 4:53:48 AM
+# ------------------------------------------
+
+$life:100.0
+$interval:15
+$amt:20
+$amt_change:1
+$amt_change_interval:30
+$min_amt:1
+$destroy_on_zero:0
+$debug:0
+$reduce_amount_on_nullifier_shot:40
+$reduce_amount_on_beam_shot:1
+$reduce_amount_on_sniper_shot:20
+$invulnerable_time_on_nullifier_shot:240
+$invulnerable_time_on_beam_shot:10
+$invulnerable_time_on_sniper_shot:120
+$charge_active:0
+$charge_payload:2000
+$charge_interval:2000
+$destroy_unit_on_charge:0
+$destroy_unit_on_charge_radius:1
+$lower_terrain_on_charge:0
+$lower_terrain_elevation:0
+$destroy_on_charge:0
+$recharge:0
+$move:0
+$elevation_move:1
+$elevation_move_reverse:0
+$elevation_move_forbidden:10
+$friend:0
+$reverse:0
+$friend_decaying:0
+$initial_payload:0
+$info_display:1
+$shield:0
+$shield_nullifier:100
+$shield_beam:10
+$shield_sniper:50
+$invulnerable_time_payload:20
+
+
+	
+once
+	SetUnitAttribute(Self CONST_MAXHEALTH 100.0)
+	SetUnitAttribute(Self CONST_HEALTH 100.0)
+	SetUnitAttribute(Self CONST_HEALRATE 0)
+	if(<-friend eq0)
+		SetUnitAttribute(Self CONST_NULLIFIERDAMAGEAMT 0.1)
+		SetUnitAttribute(self CONST_COUNTSFORVICTORY 1)
+		@vulnerable
+	else
+		SetUnitAttribute(self CONST_COUNTSFORVICTORY 0)
+		@invulnerable
+	endif
+	
+	@unit_info
+	if(<-debug)
+		ClearTraceLog
+		ShowTraceLog
+	else
+		ClearTraceLog
+		HideTraceLog
+	endif
+	true ->active
+	SetTimer0(<-interval)
+	SetTimer1(<-amt_change_interval)
+	if(<-charge_active)
+		SetTimer2(<-charge_interval)
+	endif
+	if(<-initial_payload gt(0))
+		trace2("addcreeper" <-initial_payload)
+		AddCreeper(CurrentCoords <-initial_payload)
+		@invulnerable(<-invulnerable_time_payload)
+	endif
+endonce
+
+if(<-amt lte(0))
+	if(<-destroy_on_zero)
+		if(<-friend eq0)
+			destroy(self 0)
+		endif			
+	else
+		if(<-charge_done)
+			if(<-destroy_on_charge)
+				destroy(self 0)
+			endif
+			false ->charge_done
+		endif
+	endif
+endif
+
+if(<-move)
+	if(<-friend or(not(<-invulnerable_statut)))
+		if(GetQueuedMoveCount eq0)
+			add(CurrentX randInt(-1 2)) ->destinationX
+			add(CurrentY randInt(-1 2)) ->destinationY
+			if(<-elevation_move_reverse)
+				if(GetTerrain(<-destinationX <-destinationY) neq(<-elevation_move_forbidden))
+					QueueMove(<-destinationX <-destinationY 1)
+				endif
+			else
+				if(GetTerrain(<-destinationX <-destinationY) eq(<-elevation_move))
+					QueueMove(<-destinationX <-destinationY 1)
+				endif
+			endif
+		endif
+	endif
+endif
+
+if(<-charge_active)
+	@unit_info
+	if(GetTimer2 eq0)
+		trace("time to Charge")
+		AddCreeper(CurrentCoords <-charge_payload)
+		trace2("Creeper payload" <-charge_payload)
+		true ->charge_collision
+		
+		if(<-destroy_unit_on_charge)
+			GetUnitsInRange(CurrentCoords <-destroy_unit_on_charge_radius) ->unitCount
+			if(<-unitCount neq0)
+				do (<-unitCount 0)
+					->unit
+					destroy(<-unit 1)
+				loop
+			endif
+		endif
+		
+		if(<-recharge)
+			trace("recharge")
+			settimer2(<-charge_interval)
+		else
+			trace("No Recharge")
+			true ->charge_done
+			false ->charge_active
+		endif
+	endif
+endif
+
+if(getunitattribute(self CONST_HEALTH ) lt (getunitattribute(self CONST_MAXHEALTH )) )
+	getunitattribute(self CONST_HEALTH ) ->life
+	sub(<-life getunitattribute(self CONST_MAXHEALTH ) ) ->damage
+	#@invulnerable(1)
+	if(round(<-damage 1) eq (-0.1))
+		# probably a nullifier shot
+		if(<-shield lte(0))
+			@invulnerable ( <-invulnerable_time_on_nullifier_shot )
+			@reduce_amount ( <-reduce_amount_on_nullifier_shot )
+		else
+			add(<-shield <-shield_nullifier) ->shield
+			if(<-shield lt(0))
+			 0 ->shield
+			endif
+			setunitattribute(self CONST_HEALTH getunitattribute(Self CONST_MAXHEALTH))
+		endif
+	else
+		if(<-damage eq(-20))
+			if(<-shield lte(0))
+				@invulnerable ( <-invulnerable_time_on_sniper_shot )
+				@reduce_amount ( <-reduce_amount_on_sniper_shot )
+			else
+				add(<-shield <-shield_sniper) ->shield
+				if(<-shield lt(0))
+					0 ->shield
+				endif			
+				setunitattribute(self CONST_HEALTH getunitattribute(Self CONST_MAXHEALTH))
+			endif
+		else
+			if(<-shield lte(0))
+				# probably A beam shot (nullifier shot cost 0.1 life and beam less than that... is there a other mean to check for this ?
+				@invulnerable ( <-invulnerable_time_on_beam_shot )
+				@reduce_amount ( <-reduce_amount_on_beam_shot )
+			else
+				add(<-shield <-shield_beam) ->shield
+				if(<-shield lt(0))
+					0 ->shield
+				endif			
+				setunitattribute(self CONST_HEALTH getunitattribute(Self CONST_MAXHEALTH))
+			endif
+		endif
+	endif
+endif
+
+if(<-friend eq0)
+	if(<-invulnerable_statut)
+		if(GetTimer3 eq0)
+			@vulnerable
+			mul(<-invulnerable_time_on_beam_shot 1.1) ->invulnerable_time_on_beam_shot
+			mul(<-invulnerable_time_on_nullifier_shot 1.1) ->invulnerable_time_on_nullifier_shot_shot
+			mul(<-invulnerable_time_on_sniper_shot 1.1) ->invulnerable_time_on_sniper_shot_shot
+		else
+			@shield_creeper_absorb
+			#use creeper to boost shield on invulnerable phase
+			add(GetCreeper(add(CurrentX -1) add(CurrentY -1)) <-creeper) ->creeper
+			add(GetCreeper(add(CurrentX -1) add(CurrentY 0)) <-creeper) ->creeper
+			add(GetCreeper(add(CurrentX -1) add(CurrentY 1)) <-creeper) ->creeper
+			add(GetCreeper(add(CurrentX 1) add(CurrentY -1)) <-creeper) ->creeper
+			add(GetCreeper(add(CurrentX 1) add(CurrentY 0)) <-creeper) ->creeper
+			add(GetCreeper(add(CurrentX 1) add(CurrentY 1)) <-creeper) ->creeper
+			add(GetCreeper(add(CurrentX 0) add(CurrentY -1)) <-creeper) ->creeper
+			add(GetCreeper(add(CurrentX 0) add(CurrentY 0)) <-creeper) ->creeper
+			add(GetCreeper(add(CurrentX 0) add(CurrentY 1)) <-creeper) ->creeper
+			DamageCreeper(CurrentCoords 9 2 mul(<-creeper 10000000) FALSE)
+			add(<-shield div(<-creeper  10)) ->shield
+			0 ->creeper
+			@unit_info
+		endif
+	endif
+else
+	#decaying friend emitter
+	if(<-friend_decaying)
+		@unit_info
+		if(GetTimer1 eq0)
+			if(<-amt lt(0))
+				<-amt add(<-amt_change) ->amt
+				@unit_info
+				SetTimer1(<-amt_change_interval)
+			else
+				@unit_info
+				if(<-reverse)
+					false ->friend
+					true ->active
+					@vulnerable
+					1 ->amt
+				else
+					false ->friend_decaying
+				endif
+			endif
+		endif
+	endif
+endif
+
+
+if(<-invulnerable_statut eq0)
+	if(<-active)
+		@unit_info
+		if(GetTimer1 eq0)
+			if(<-amt gt(<-min_amt))
+				if(<-amt lt (2000))
+					<-amt add(<-amt_change) ->amt
+					@unit_info
+					SetTimer1(<-amt_change_interval)
+				else
+					if(<-amt_change lt(0))
+						<-amt add(<-amt_change) ->amt
+						@unit_info
+						SetTimer1(<-amt_change_interval)
+					else
+						2000 ->amt 
+						@unit_info
+					endif
+				endif
+			else
+				if(<-reverse eq0)
+					false ->active
+					trace("we have reached minimal amount for this emitter")
+				else
+					<-amt add(<-amt_change) ->amt
+					@unit_info
+					SetTimer1(<-amt_change_interval)
+					trace("emitter reversed")
+				endif
+			endif
+		endif
+	else	
+		trace("change emitter amount no longer active")
+		trace(<-amt)
+	endif
+else
+	if(<-friend eq0)
+		SetTimer1(<-amt_change_interval)
+		@unit_info
+	endif
+endif
+
+if(<-amt neq0)
+	if (GetTimer0 eq0)
+		#trace("creating creeper")
+		if(<-charge_collision)
+			trace("charge_collision")
+			false ->charge_collision
+		else
+			if(<-invulnerable_statut eq0 or(<-friend))
+				SetCreeperNoLower(CurrentCoords <-amt)
+				SetTimer0(<-interval)
+			endif
+		endif
+	endif
+endif
+
+:shield_creeper_absorb
+#local_creeper_on_position creeper under the CRPLcore
+#shield_creeper_rate creeper to leave on position float 0 to 1 
+#shield_creeper_coef creeper absorbed to shield divide
+#absorb all creeper for shield
+0 ->shield_creeper_rate
+#Transform all creeper into shield
+1 ->shield_creeper_coef
+GetCreeper(CurrentCoords) ->local_creeper_on_position
+if (<-local_creeper_on_position gt(0))
+	#creeper
+	SetCreeper(CurrentCoords mul(<-local_creeper_on_position <-shield_creeper_rate) )
+	add(<-shield div(<-local_creeper_on_position  <-shield_creeper_coef)) ->shield
+else
+	#anticreeper
+endif
+0 ->local_creeper_on_position
+@unit_info
+:ligne
+"
+" ->ligne_string
+	<-ligne_string
+	
+:reduce_amount
+->amt_change_local
+if(<-amt lte(<-min_amnt))
+	<-min_amnt ->amt
+else
+	<-amt sub(<-amt_change_local) ->amt
+endif
+
+:invulnerable
+	->invulnerable_time_local
+	SetUnitAttribute(Self CONST_SNIPERTARGET FALSE)
+	SetUnitAttribute(Self CONST_BEAMTARGET FALSE)
+	SetUnitAttribute(Self CONST_NULLIFIERDAMAGES FALSE)
+	SetUnitAttribute(self CONST_HEALTH 100.0)
+	SetTimer3(<-invulnerable_time_local)
+	if(<-friend)
+		EnableTowerField(90 0 2000 0 TRUE)
+	else
+		EnableTowerField(90 -200000 0 0 TRUE)
+	endif
+	true ->invulnerable_statut 
+	@unit_info
+	
+:vulnerable
+	SetUnitAttribute(Self CONST_SNIPERTARGET TRUE)
+	SetUnitAttribute(Self CONST_BEAMTARGET TRUE)
+	SetUnitAttribute(Self CONST_NULLIFIERDAMAGES TRUE)
+	DisableTowerField
+	false ->invulnerable_statut
+	@unit_info
+
+:creeper_amount_change
+	"Change countdown : " ->string
+	GetTimer1 ->frames
+	round(div(asfloat(<-frames) 30.0) 2) ->frames_number_formatted
+	concat(<-string <-frames) ->function_value
+	<-function_value
+	
+:creeper_amount_change_value
+	"Change value : " ->string
+	concat(<-string <-amt_change) ->function_value
+	<-function_value
+
+:creeper_health
+	"Heath : " ->amount_string
+	concat(<-amount_string getunitattribute(self CONST_HEALTH)) ->function_value
+	<-function_value
+	
+:creeper_shield
+	"Shield : " ->shield_string
+	concat(<-shield_string round(<-shield 2)) ->function_value
+	<-function_value
+
+
+:creeper_amount
+	"Amount : " ->amount_string
+	concat(<-amount_string <-amt) ->function_value
+	<-function_value
+
+:creeper_interval
+	"Interval : " ->interval_string
+	round(div(asfloat(<-interval) 30.0) 2) ->interval_number_formatted
+	concat(<-interval_string <-interval_number_formatted) ->function_value
+	<-function_value
+	
+:creeper_vulnerable
+	if (<-friend eq0) 
+		if(<-invulnerable_statut)
+			"Invulnerable countdown : " ->vulnerable_string
+			concat(<-vulnerable_string gettimer3) ->function_value
+		else
+			if(<-shield gt(0))
+				concat(<-ligne_info @ligne) ->ligne_info
+				concat("Beam Damage to shield : " <-shield_beam) ->ligne_info
+				concat(<-ligne_info @ligne) ->ligne_info
+				concat("Nullifier Damage to shield " <-shield_nullifier) ->ligne_info2
+				concat(<-ligne_info2 @ligne) ->ligne_info2
+				concat("Sniper Damage to shield " <-shield_sniper) ->ligne_info3
+				concat(<-ligne_info3 @ligne) ->ligne_info3
+				concat(<-ligne_info <-ligne_info2) ->function_value
+				concat(<-function_value <-ligne_info3) ->function_value
+			else
+				concat("Beam Damage to creeper emission :" <-reduce_amount_on_beam_shot) ->ligne_info
+				concat(<-ligne_info @ligne) ->ligne_info
+				concat("Nullifier Damage to creeper emission : " <-reduce_amount_on_nullifier_shot) ->ligne_info2
+				concat(<-ligne_info2 @ligne) ->ligne_info2
+				concat("Sniper Damage to creeper emission : " <-reduce_amount_on_sniper_shot) ->ligne_info3
+				concat(<-ligne_info3 @ligne) ->ligne_info3
+				concat(<-ligne_info <-ligne_info2) ->function_value
+				concat(<-function_value <-ligne_info3) ->function_value
+			endif
+		endif
+		<-function_value
+	endif
+	
+:charge_info
+	concat("Charge countdown : " gettimer2) ->function_value
+	<-function_value
+
+:unit_info
+	if(<-info_display)
+		"Emitter informations : " ->unit_info
+		concat(<-unit_info @ligne) ->unit_info
+		concat(<-unit_info @creeper_health) ->unit_info
+		concat(<-unit_info @ligne) ->unit_info
+		concat(<-unit_info @creeper_shield) ->unit_info
+		concat(<-unit_info @ligne) ->unit_info
+		concat(<-unit_info @creeper_amount) ->unit_info
+		concat(<-unit_info @ligne) ->unit_info
+		concat(<-unit_info @creeper_interval) ->unit_info
+		concat(<-unit_info @ligne) ->unit_info
+		concat(<-unit_info @creeper_amount_change) ->unit_info
+		concat(<-unit_info @ligne) ->unit_info
+		concat(<-unit_info @creeper_amount_change_value) ->unit_info
+		concat(<-unit_info @ligne) ->unit_info
+		concat(<-unit_info @creeper_vulnerable) ->unit_info
+		SetPopupText(<-unit_info)
+	else
+		SetPopupText("")
+	endif
+	
+:gameloaded
+	@unit_info
+	
+:awake
+	@unit_info
+	
+:destroyed

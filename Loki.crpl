@@ -1,0 +1,305 @@
+# Loki.crpl
+# Created on: 11/2/2014 5:41:01 PM
+# ------------------------------------------
+
+#Specialized script for loki
+
+$debug:1
+$debug_sattelite:0
+$info_display:1
+$active:1
+$sattelite_cooldown:3600
+$rain_cooldown:18000
+
+once
+	"Sattelite.crpl" ->sattelite_crpl
+	SetText("")
+	SetCreeperMax(2000000000)
+	SetCreeperFlowRate(0.20)
+	SetCreeperEvaporationLimit(0)
+	
+	SetUnitAttribute(self CONST_MAXHEALTH 100.0)
+	SetUnitAttribute(self CONST_HEALTH 100.0)
+	SetUnitAttribute(self CONST_NULLIFIERDAMAGEAMT 10.0)
+	
+	SetUnitAttribute(self CONST_AMMO 1.0)
+	SetUnitAttribute(self CONST_HEALRATE 0.0)
+	SetUnitAttribute(self CONST_SHOWAMMOBAR true)
+	SetUnitAttribute(self CONST_SHOWHEALTHBAR true)
+	SetUnitAttribute(self CONST_SUPPORTSDIGITALIS true)
+	11 ->mp
+	11 ->start_max_mp
+	SetUnitAttribute(self CONST_MAXAMMO <-start_max_mp)
+	2000 ->max_mp
+	0.00005 mul(<-start_max_mp) ->mp_rate
+	100 ->hp
+	10 ->sattelite_max
+	0 ->sattelite_current
+	0 ->sattelite_number
+	10 ->sattelite_cost
+	0 ->wait
+	0 ->digitalis_radius
+	100 ->digitalis_max_radius
+	10 ->digitalis_temp_radius
+	5 ->digitalis_upgrade_cost
+	60 ->digitalis_create_duration
+	CreateList ->sattelite_liste
+	CreateList ->sattelite_liste_speed
+	AppendToList(<-sattelite_liste_speed 0.005)
+	AppendToList(<-sattelite_liste_speed -0.010)
+	AppendToList(<-sattelite_liste_speed 0.015)
+	AppendToList(<-sattelite_liste_speed -0.020)
+	AppendToList(<-sattelite_liste_speed 0.025)
+	AppendToList(<-sattelite_liste_speed -0.030)
+	AppendToList(<-sattelite_liste_speed 0.035)
+	AppendToList(<-sattelite_liste_speed -0.040)
+	AppendToList(<-sattelite_liste_speed 0.045)
+	AppendToList(<-sattelite_liste_speed -0.05)
+	CreateList ->sattelite_liste_creeper
+	AppendToList(<-sattelite_liste_creeper 100)
+	AppendToList(<-sattelite_liste_creeper 90)
+	AppendToList(<-sattelite_liste_creeper 80)
+	AppendToList(<-sattelite_liste_creeper 70)
+	AppendToList(<-sattelite_liste_creeper 60)
+	AppendToList(<-sattelite_liste_creeper 50)
+	AppendToList(<-sattelite_liste_creeper 40)
+	AppendToList(<-sattelite_liste_creeper 30)
+	AppendToList(<-sattelite_liste_creeper 20)
+	AppendToList(<-sattelite_liste_creeper 10)
+	CreateList ->sattelite_liste_distance
+	AppendToList(<-sattelite_liste_distance 5)
+	AppendToList(<-sattelite_liste_distance 15)
+	AppendToList(<-sattelite_liste_distance 25)
+	AppendToList(<-sattelite_liste_distance 35)
+	AppendToList(<-sattelite_liste_distance 45)
+	AppendToList(<-sattelite_liste_distance 55)
+	AppendToList(<-sattelite_liste_distance 65)
+	AppendToList(<-sattelite_liste_distance 75)
+	AppendToList(<-sattelite_liste_distance 85)
+	AppendToList(<-sattelite_liste_distance 95)	
+	@unit_info
+	delay(1)
+	SetTimer1(0)
+	SetTimer2(<-rain_cooldown)
+endonce
+
+if(<-active)
+	@sattelite_count
+	#@check_first_sattelite
+	@creeper_to_mp
+	@unit_info
+	if(<-digitalis_radius gt(5) and (GetScriptVar(Self "runner.crpl" "runner_active") eq0))
+		SetScriptVar(Self "runner.crpl" "runner_active" 1)
+	endif
+
+	if(<-digitalis_radius lt(<-digitalis_temp_radius))
+		if(GetScriptVar(Self "digitalis.crpl" "digitalis_radius_upgrade_active") eq0)
+			if(<-mp gte(<-digitalis_upgrade_cost mul(<-digitalis_radius add(1))))
+				<-digitalis_radius add(1) ->digitalis_radius
+				<-mp sub(<-digitalis_upgrade_cost mul(<-digitalis_radius)) ->mp
+				SetUnitAttribute(self CONST_AMMO <-mp)
+				SetScriptVar(Self "digitalis.crpl" "digitalis_radius" <-digitalis_radius)
+				SetScriptVar(Self "digitalis.crpl" "digitalis_radius_upgrade_active" 1)
+			endif
+		endif
+	endif
+
+	if(<-wait eq0)
+		if(<-mp gt(<-sattelite_cost mul(GetListCount(<-sattelite_liste))))
+			@update_destroyed ->sattelite_index
+			if(<-sattelite_index neq0)
+				<-mp sub(<-sattelite_cost) ->mp
+				SetUnitAttribute(self CONST_AMMO <-mp)
+				@create_sattelite(<-sattelite_index)
+			else
+				if(GetListCount(<-sattelite_liste) lt(<-sattelite_max))
+					<-mp sub(<-sattelite_cost) ->mp
+					SetUnitAttribute(self CONST_AMMO <-mp)
+					@create_sattelite(GetListCount(<-sattelite_liste))
+					GetListCount(<-sattelite_liste) mul(10) ->digitalis_temp_radius
+				endif
+			endif
+		endif
+	endif
+
+
+
+	if(GetTimer2 eq0)
+		if(<-mp gte(2000))
+			0 ->mp
+			SetUnitAttribute(self CONST_AMMO <-mp)
+			MakeRain(10 2000)
+			SetTimer2(<-rain_cooldown)
+		endif
+	endif
+	
+endif
+
+:check_first_sattelite
+if(GetCoresWithVar("list_index" 0) eq0)
+	@create_sattelite(0)
+endif
+
+:update_destroyed
+0 ->return_value
+do(GetListCount(<-sattelite_liste) 0)
+	if(GetCoresWithVar("list_index" I) eq0)
+		if(<-return_value eq0)
+			I ->return_value
+		endif
+	endif
+loop
+<-return_value
+
+:UpgradeMaxMP
+<-start_max_mp add(1) ->start_max_mp
+<-start_max_mp mul(0.0005) ->mp_rate
+0 ->mp
+SetUnitAttribute(self CONST_MAXAMMO <-start_max_mp)
+SetUnitAttribute(self CONST_AMMO <-mp)
+
+:CorrectCurrentMP
+GetUnitAttribute(self CONST_MAXAMMO) ->mp 
+SetUnitAttribute(self CONST_AMMO <-mp)
+
+:UpdateMaxMP
+if(<-mp gt(GetUnitAttribute(self CONST_MAXAMMO)))
+	if(<-start_max_mp lt(<-max_mp))
+		@upgradeMaxMP
+	else
+		@CorrectCurrentMP
+	endif
+endif
+
+:spores_defend
+if(GetTimer0 eq0)
+	GetUnitsInRange(CurrentCoords 20) ->unit_to_attack_number
+	do(<-unit_to_attack_number 0)
+		->unit_to_attack
+		CreateSpore(CurrentCoords GetUnitAttribute(<-unit_to_attack CONST_COORDX) GetUnitAttribute(<-unit_to_attack CONST_COORDY) 100 1)
+	loop
+	SetTimer0(300)
+endif
+
+:creeper_to_mp
+if(<-mp lt(GetUnitAttribute(self CONST_MAXAMMO)))
+	GetCreeper(CurrentCoords) ->absorbed_creeper
+	SetCreeper(CurrentCoords 1)
+	if(GetUnitCountInRange(CurrentCoords 20) neq0)
+		<-mp add(<-absorbed_creeper mul(<-mp_rate) mul(10) ) ->mp
+		1 ->spores_defend_flag
+		@spores_defend
+	else
+		0 ->spores_defend_flag
+		<-mp add(<-absorbed_creeper mul(<-mp_rate)) ->mp
+	endif
+	SetUnitAttribute(self CONST_AMMO <-mp)
+endif
+@UpdateMaxMP
+
+
+#Create Sattelite at distance orbit
+:create_sattelite
+->index
+if(GetTimer1 eq0)
+	1 ->wait
+	CreateUnit("CRPLCORE" CurrentX CurrentY) ->sattelite_uid
+	SetImage(<-sattelite_uid "main" "default")
+	if(<-index lt(GetListCount(<-sattelite_liste)))
+		SetListElement(<-sattelite_liste <-index <-sattelite_uid)
+	else
+		AppendToList(<-sattelite_liste <-sattelite_uid)
+	endif
+	AddScriptToUnit(<-sattelite_uid <-sattelite_crpl)
+	SetScriptVar(<-sattelite_uid <-sattelite_crpl "debug" <-debug_sattelite)
+	SetScriptVar(<-sattelite_uid <-sattelite_crpl "list_index" <-index)
+	SetScriptVar(<-sattelite_uid <-sattelite_crpl "orbit_speed" GetListElement(<-sattelite_liste_speed <-index ))
+	SetScriptVar(<-sattelite_uid <-sattelite_crpl "creeper_amount" GetListElement(<-sattelite_liste_creeper <-index ))
+	SetScriptVar(<-sattelite_uid <-sattelite_crpl "orbit_distance"  GetListElement(<-sattelite_liste_distance <-index ))
+	SetScriptVar(<-sattelite_uid <-sattelite_crpl "sattelited" self)
+	SetTimer1(<-sattelite_cooldown)
+endif
+
+:sattelite_count_orbit
+->orbit
+GetCoresWithVar("orbit_distance" <-orbit) ->number
+<-number
+
+:sattelite_count
+GetCoresWithVar("sattelited" self) ->number
+<-number ->sattelite_number
+
+:ligne
+"
+" ->ligne_string
+	<-ligne_string
+
+:unit_hp
+concat("HP : " concat(GetUnitAttribute(self CONST_HEALTH ) concat(" / " GetUnitAttribute(self CONST_MAXHEALTH)))) ->function_value
+<-function_value
+
+:unit_mp
+concat("MP : " concat(round(<-mp 4) concat(" / " GetUnitAttribute(self CONST_MAXAMMO)))) ->function_value
+<-function_value
+
+:unit_mp_rate
+if(GetUnitCountInRange(CurrentCoords 20) eq0)
+	concat("MP conversation rate  : " concat(round(<-mp_rate 4) mul(100) " %")) ->function_value
+else
+	concat("MP conversation rate  : " concat(round(<-mp_rate 4) mul(1000) " %")) ->function_value
+endif
+<-function_value
+
+:sattelite_creation_cost
+concat("Sattelite Creation cost : " <-sattelite_cost mul(GetListCount(<-sattelite_liste))) ->function_value
+<-function_value
+
+:sattelite_max
+concat("Sattelite Max : " <-sattelite_max) ->function_value
+<-function_value
+
+:digitalis_radius_upgrade_infos
+concat("Digitalis radius increase cost  : " <-digitalis_upgrade_cost mul(<-digitalis_radius add(1))) ->function_value
+<-function_value
+
+:digitalis_radius_max_infos
+concat("Digitalis radius Max  : " <-digitalis_max_radius) ->function_value
+<-function_value
+
+:rain_info
+concat("Rain cost : " 2000) ->function_value
+<-function_value
+
+:spore_defend_statut
+if(<-spores_defend_flag)
+	"Spore Defend Activated" ->function_value
+else
+	"Spore Defend Inactive" ->function_value
+endif
+<-function_value
+
+:spore_defend_timer
+concat("Spore Defend Timer : " GetTimer0) ->function_value
+<-function_value
+
+:unit_info
+if(<-info_display)
+	CreateList ->list_info
+	AppendToList(<-list_info @unit_hp)
+	AppendToList(<-list_info @unit_mp)
+	AppendToList(<-list_info @unit_mp_rate)
+	AppendToList(<-list_info @sattelite_creation_cost)
+	AppendToList(<-list_info @sattelite_max)
+	AppendToList(<-list_info @digitalis_radius_max_infos)
+	AppendToList(<-list_info @digitalis_radius_upgrade_infos)
+	AppendToList(<-list_info @rain_info)
+	AppendToList(<-list_info @spore_defend_statut)
+	AppendToList(<-list_info @spore_defend_timer)
+	concat("Informations" @ligne) ->unit_info_string
+	do(GetListCount(<-list_info) 0)
+		concat(<-unit_info_string concat(GetListElement(<-list_info I) @ligne)) ->unit_info_string
+	loop
+	SetPopupText(<-unit_info_string)
+else
+	SetPopupText("No Informations")
+endif

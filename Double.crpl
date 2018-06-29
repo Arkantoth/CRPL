@@ -1,0 +1,25 @@
+# Double.crpl
+# Created on: 10/22/2014 3:44:14 AM
+# ------------------------------------------
+
+if (<-row lt (MapHeight))
+	@DoRow
+	<-row add(1) ->row
+endif	
+
+
+:DoRow
+do(MapWidth 0)
+	concat("X : [" I) ->message
+	concat(<-message "] Y : [") ->message
+	concat(<-message <-row) ->message
+	concat(<-message "] Elevation [") ->message
+	GetTerrain(I <-row) ->elevation
+	concat(<-message <-elevation) ->message
+	<-elevation mul(5) ->elevation_override
+	concat(<-message "] New : [") ->message
+	concat(<-message <-elevation_override) ->message
+	Trace(<-message)
+	delay(1)
+	SetTerrainOverride(I <-row  <-elevation_override)
+loop

@@ -1,0 +1,13 @@
+# main.crpl
+# Created on: 5/14/2014 4:57:03 AM
+# ------------------------------------------
+
+once
+	do(MapHeight 0)
+		do(MapWidth 0)
+			if (GetTerrain(I J) gte(10))
+				SetTerrainOverride(I J 2147)
+			endif
+		loop
+	loop
+endonce

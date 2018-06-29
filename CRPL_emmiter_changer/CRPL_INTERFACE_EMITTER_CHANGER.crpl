@@ -1,0 +1,81 @@
+# CRPL_INTERFACE_EMITTER_CHANGER.crpl
+# Created on: 4/18/2015 1:23:18 PM
+# ------------------------------------------
+
+#Interface : emmitter_changer
+
+# TEMPLATE VARS
+$CRPL_INIT:0
+$CRPL_RUNNING:0
+$CRPL_INTERFACE:"CRPL_INTERFACE_EMITTER_CHANGER"
+$CRPL_SCRIPT_NAME:"CRPL_UNIT.crpl"
+
+# Unit Vars to watch
+$CRPL_UNIT_VARS:"unit_creeper_amount"
+
+# Specialized vars
+$creeper_change_amount:1
+$creeper_change_interval:3600
+$creeper_change_min:0
+$creeper_change_max:2000
+
+
+Once
+	OperateWhilePaused(false)
+	split(<-CRPL_UNIT_VARS " ") ->unit_vars_liste
+	SetUnitAttribute(Self CONST_MAXAMMO <-creeper_change_interval)
+Endonce
+
+if(<-CRPL_INIT)
+	@interface_start
+endif
+
+if(<-CRPL_RUNNING)
+	GetTimer0 ->creeper_change_interval_timer
+	if(<-creeper_change_interval_timer eq0)
+		@unit_var_get(0) add(<-creeper_change_amount) ->creeper_amount_new
+		if(<-creeper_amount_new lt(<-creeper_change_max) and(<-creeper_amount_new gt(<-creeper_change_min)))
+			@unit_var_set(0 <-creeper_amount_new)
+			SetTimer0(<-creeper_change_interval)
+		else
+			if(<-creeper_change_amount gt(0))
+				if(@unit_var_get(0) neq(<-creeper_change_max))
+					@unit_var_set(0 <-creeper_change_max)
+				endif
+			else
+				if(@unit_var_get(0) neq(<-creeper_change_min))
+					@unit_var_set(0 <-creeper_change_min)
+				endif
+			endif
+		endif
+	else
+		SetUnitAttribute(Self CONST_AMMO GetUnitAttribute(self CONST_MAXAMMO) sub(GetTimer0))
+	endif
+endif
+
+:unit_info
+CreateList ->unit_info_liste 
+AppendToList(<-unit_info_liste concat("Change amount : " <-creeper_change_amount))
+AppendToList(<-unit_info_liste concat("Change Interval : " <-creeper_change_interval ))
+if(<-creeper_change_min lt(0))
+	AppendToList(<-unit_info_liste concat("Max anti-creeper emission : " <-creeper_change_min))
+else
+	AppendToList(<-unit_info_liste concat("Max Creeper emission : " <-creeper_change_max))
+endif
+<-unit_info_liste
+
+:interface_start
+SetTimer0(<-creeper_change_interval)
+@unit_info ->interface_info
+0 ->CRPL_INIT
+1 ->CRPL_RUNNING
+
+:unit_var_set
+->var_new_value ->var_index
+GetListElement(<-unit_vars_liste <-var_index) ->var_name
+SetScriptVar(Self <-CRPL_SCRIPT_NAME <-var_name <-var_new_value)
+SetScriptVar(Self <-CRPL_SCRIPT_NAME "interfaces_reboot" 1)
+
+:unit_var_get
+->var_index
+GetScriptVar(Self <-CRPL_SCRIPT_NAME GetListElement(<-unit_vars_liste <-var_index))

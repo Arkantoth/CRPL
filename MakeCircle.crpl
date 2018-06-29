@@ -1,0 +1,77 @@
+# MakeCircle.crpl
+# Created on: 7/19/2013 6:29:42 PM
+# ------------------------------------------
+
+once
+	ShowTraceLog
+	PlaySound("Retro26")
+endonce
+
+
+if (<-row lt (MapHeight))
+	@DoRow
+	<-row add(1) ->row
+endif	
+
+
+:DoRow
+	do(MapWidth 0)
+		concat("X : [" I) ->message
+		concat(<-message "] Y : [") ->message
+		concat(<-message <-row) ->message
+		concat(<-message "]") ->message
+		Trace(<-message)
+		Distance(80 80 I <-row) ->distance
+		if(<-distance gte(80))
+			SetTerrain(I <-row 10)
+		endif
+		if(<-distance lte(80))
+			SetTerrain(I <-row 9)
+		endif
+		if(<-distance lte(75))
+			SetTerrain(I <-row 8)
+		endif
+		if(<-distance lte(70))
+			SetTerrain(I <-row 7)
+		endif
+		if(<-distance lte(65))
+			SetTerrain(I <-row 6)
+		endif
+		if(<-distance lte(60))
+			SetTerrain(I <-row 5)
+		endif
+		if(<-distance lte(55))
+			SetTerrain(I <-row 4)
+		endif
+		if(<-distance lte(50))
+			SetTerrain(I <-row 3)
+		endif
+		if(<-distance lte(45))
+			SetTerrain(I <-row 2)
+		endif
+		if(<-distance lte(40))
+			SetTerrain(I <-row 3)
+		endif
+		if(<-distance lte(35))
+			SetTerrain(I <-row 4)
+		endif
+		if(<-distance lte(30))
+			SetTerrain(I <-row 5)
+		endif
+		if(<-distance lte(25))
+			SetTerrain(I <-row 6)
+		endif
+		if(<-distance lte(20))
+			SetTerrain(I <-row 7)
+		endif
+		if(<-distance lte(15))
+			SetTerrain(I <-row 8)
+		endif
+		if(<-distance lte(10))
+			SetTerrain(I <-row 9)
+		endif
+		if(<-distance lte(5))
+			SetTerrain(I <-row 10)
+		endif
+		delay(1)
+	loop

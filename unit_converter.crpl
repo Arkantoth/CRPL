@@ -1,0 +1,130 @@
+# unit_converter.crpl
+# Created on: 7/7/2015 12:23:37 PM
+# ------------------------------------------
+
+$hp_current:100
+$hp_max:100
+$mp_start:190
+$energy_needed:200
+$defense:10
+$defense_reduc:1
+$beam_crpl:"beam.crpl"
+$anti_creeper_amount:-20
+$anti_creeper_amount_spore:-40
+$anti_creeper_amount_cannon:-100
+$mul_cannon:1
+
+Once
+	HideTraceLog
+	#SetCreeperMax(2000)
+	@clean_units
+	@hidebeam
+	SetUnitAttribute(Self CONST_AMMO <-mp_start)
+	SetUnitAttribute(Self CONST_MAXHEALTH <-hp_max)
+	SetUnitAttribute(Self CONST_HEALTH <-hp_current)
+	0 ->flag_first
+	#Spore Tower
+	CreateUnit("SPORETOWER" 1 1) ->spore_tower
+	CreateUnit("EMITTER" 48 1) ->emitter
+endonce
+
+if(GetCreeper(CurrentCoords) gt(0))
+	SetUnitAttribute(Self CONST_HEALTH GetUnitAttribute(Self CONST_HEALTH) sub(GetCreeper(CurrentCoords)))
+	if(<-defense gt(0))
+		#SetCreeper(CurrentCoords GetCreeper(CurrentCoords) sub(<-defense))
+		<-defense sub(<-defense_reduc) ->defense
+	endif
+endif
+
+if(GetUnitAttribute(Self CONST_AMMO) gte(<-energy_needed))
+	SetUnitAttribute(self CONST_AMMO GetUnitAttribute(self CONST_AMMO) sub(<-energy_needed))
+	if(<-flag_first)
+		@convert_victory
+	else
+		@convert_first
+	endif
+endif
+
+if(0)
+	if(GetTimer0 eq0 and(<-anti_creeper_amount lt(0)) )
+		SetCreeper(CurrentCoords <-anti_creeper_amount)
+		<-anti_creeper_amount add(1) ->anti_creeper_amount
+		SetTimer0(30)
+	endif
+
+	if(GetTimer1 eq0 and(<-anti_creeper_amount_spore lt(0)))
+		CreateSpore(CurrentX CurrentY RandCoords 1 <-anti_creeper_amount_spore )
+		<-anti_creeper_amount_spore add(1) ->anti_creeper_amount_spore
+		SetTimer1(300)
+	endif
+
+	if(GetTimer2 eq0 and(<-anti_creeper_amount_cannon lt(0)))
+		@anticreeperallunits
+		SetTimer2(30)
+	endif
+endif
+
+:anticreeperallunits
+GetAllUnitsInRange(0 0 9999 1) 0 do
+	->unit
+	
+		AddCreeper(GetUnitAttribute(<-unit CONST_COORDX) GetUnitAttribute(<-unit CONST_COORDY) <-anti_creeper_amount_cannon)
+
+loop
+
+:SendBulletCannon
+->amount ->target_y ->target_x
+AddCreeper(<-target_x <-target_y <-amount)
+
+:convert_first
+#convert the spore tower
+@showbeam(GetUnitAttribute(<-spore_tower CONST_COORDX) GetUnitAttribute(<-spore_tower CONST_COORDY))
+CreateEffect(14 CellToPixel(GetUnitAttribute(<-spore_tower CONST_COORDX) GetUnitAttribute(<-spore_tower CONST_COORDY)) -1 2 2 0.05)
+SetScriptVar(<-spore_tower 0 "sporePayload" -25000000)
+1 ->flag_first
+delay(1)
+ClearConversation
+AddConversationMessage(1 "Starks, The unknown structure just converted this spore tower to anti-creeper")
+AddConversationMessage(1 "We can surely win if we are able to power the structure to convert the emitter")
+ShowConversation
+PauseGame
+
+:convert_victory
+#Convert the emitter and win 
+SetScriptVar(<-emitter 0 "productionAmt" -25000000)
+delay(1)
+ClearConversation
+AddConversationMessage(1 "Starks, We were able to convert the emitter thanks to the unknown structure")
+AddConversationMessage(1 "My scanner just found another planet with a similar structure, maybe we can find more about it ?")
+ShowConversation
+PauseGame
+Delay(2)
+DestroyAllEnemyUnits
+
+
+:clean_units
+GetAllUnitsInRange(0 0 9999 1) 0 do
+	->unit
+	if(GetUnitType(<-unit) eq("EMITTER"))
+		destroy(<-unit 0)
+	endif
+	if(GetUnitType(<-unit) eq("SPORETOWER"))
+		destroy(<-unit 0)
+	endif
+	if(GetUnitType(<-unit) eq("POWERZONE"))
+		destroy(<-unit 0)
+	endif
+loop
+
+:showbeam
+->target_x ->target_y
+SetScriptVar(Self <-beam_crpl "target_x" <-target_x)
+SetScriptVar(Self <-beam_crpl "target_y" <-target_y)
+SetScriptVar(Self <-beam_crpl "show" 1)
+
+:hidebeam
+SetScriptVar(Self <-beam_crpl "show" 0)
+
+:destroyed
+FailMission
+

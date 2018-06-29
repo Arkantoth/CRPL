@@ -1,0 +1,20 @@
+# Terrasor.crpl
+# Created on: 4/4/2014 10:42:15 PM
+# ------------------------------------------
+
+once
+	showtracelog
+	setcreeper(currentcoords 2000)
+endonce
+
+randXCoord ->selectedX
+randYCoord ->selectedY
+trace (<-selectedX)
+trace (<-selectedY)
+trace (getterrain(<-selectedX <-selectedY))
+if ( getterrain(<-selectedX <-selectedY) eq(1) )
+	setvoid(<-selectedX <-selectedY)
+	trace ("set void")
+else
+	trace ("Already Void")
+endif

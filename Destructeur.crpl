@@ -1,0 +1,210 @@
+# Destructeur.crpl
+# Created on: 10/15/2014 5:21:05 PM
+# ------------------------------------------
+
+$destruction_range:20
+$destruction_interval:200
+$destruction_interval_coef:100
+$destruction_repeter:1
+$destruction_range_reduction:1
+$destruction_duration:200
+$destruction_cost_unit:10
+$creeper_aid:0
+$unit_infos_afficher:1
+$move:0
+$move_elevation_reverse:0
+$move_elevation:1
+$debug:0
+
+once
+	@debug(<-debug)
+	SetUnitAttribute(Self CONST_SHOWAMMOBAR TRUE)
+	SetUnitAttribute(Self CONST_MAXAMMO <-creeper_aid)
+	<-destruction_duration ->destruction_count
+	SetImage(Self "shield" "Custom0_256")
+	@range_graphisme_update_start
+	SetTimer0(<-destruction_interval)
+	EnableTowerField(<-destruction_range -10000000 1000000 0 FALSE) 
+endonce
+
+if(GetTimer0 eq0)
+	1 ->stop_move
+	GetUnitsInRange(CurrentCoords <-destruction_range) ->unitCount
+	if(<-unitCount neq0)
+		do (<-unitCount 0)
+			->unit
+			if(<-destruction_count lte(0))
+			else
+				damage(<-unit 2)
+				<-destruction_count sub(<-destruction_cost_unit) ->destruction_count
+				@unit_info
+				delay (1)
+			endif
+		loop
+	endif
+	if(<-destruction_count lte(0))
+		if(<-destruction_repeter)
+			<-destruction_duration ->destruction_count
+			<-destruction_interval div(mul(<-destruction_interval_coef) 100) ->destruction_interval
+			SetTimer0(<-destruction_interval)
+			0 ->stop_move
+			@destruction_range_reduction
+		else
+			Destroy(Self 0)
+		endif
+	else
+		<-destruction_count sub(1) ->destruction_count
+	endif
+endif
+
+if(<-move neq0)
+	if(<-stop_move neq0)
+		@move(<-move_elevation_reverse <-move_elevation)
+	endif
+endif
+#SetCreeperNoLower(CurrentCoords 1)
+@destruction_range_creeper_aid
+@unit_info
+
+:move
+->elevation_move ->elevation_move_reverse 
+if(GetQueuedMoveCount eq0)
+	CurrentX ->lastx
+	CurrentY ->lasty
+	add(CurrentX randInt(-1 2)) ->destinationX
+	add(CurrentY randInt(-1 2)) ->destinationY
+	<-destinationX neq(<-lastx) ->checkx
+	<-destinationY neq(<-lastY) ->checky
+	
+	#if(<-destinationX neq(<-lastx) <-destinationY neq(<-lastY) and )
+	#if(<-destinationX neq(<-lastx) and(<-destinationY neq(<-lastY))
+	#if(<-checkx <-checky and)
+	#if(<-checkx and(<-checky))
+		if(<-elevation_move_reverse)
+			if(GetTerrain(<-destinationX <-destinationY) neq(<-elevation_move))
+				QueueMove(<-destinationX <-destinationY 1)
+			endif
+		else
+			if(GetTerrain(<-destinationX <-destinationY) eq(<-elevation_move))
+				QueueMove(<-destinationX <-destinationY 1)
+			endif
+		endif
+	#endif
+endif
+
+:range_check0
+if(<-destruction_range lte(0))
+	destroy(self 0)
+endif
+
+:destruction_range_creeper_aid
+if(<-creeper_aid neq0)
+	GetCreeper(CurrentCoords) ->creeper_qte
+	<-creeper_total add(div(<-creeper_qte 1000)) ->creeper_total
+	SetCreeper(CurrentCoords 0)
+	if(<-creeper_total gte(<-creeper_aid))
+		<-creeper_total sub(<-creeper_aid) ->creeper_total
+		<-destruction_range add(1) ->destruction_range
+		EnableTowerField(<-destruction_range -10000000 1000000 0 FALSE) 
+		@range_graphisme_update
+	endif
+	SetUnitAttribute(Self CONST_AMMO <-creeper_total)
+	if(<-creeper_total lt(0))
+		<-creeper_total add(<-creeper_aid) ->creeper_total
+		<-destruction_range sub(1) ->destruction_range
+		EnableTowerField(<-destruction_range -10000000 1000000 0 FALSE) 
+		@range_graphisme_update
+		@range_check0
+	endif
+endif
+
+:destruction_range_creeper_aid_infos
+if(<-creeper_aid neq0)
+	"Destruction Range Next Update : " ->string
+	concat(<-string round(mul(<-creeper_total 1000) 2)) ->function_value
+	concat(<-function_value " / ") ->function_value
+	concat(<-function_value mul(<-creeper_aid 1000)) ->function_value
+<-function_value
+else
+""
+endif
+
+:destruction_range_reduction
+if(<-destruction_range_reduction neq0)
+	trace(<-destruction_range)
+	<-destruction_range sub(<-destruction_range_reduction) ->destruction_range
+	trace(<-destruction_range)
+	if(<-destruction_range lte(0))
+		Destroy(self 0)
+	else
+		@range_graphisme_update
+	endif
+endif
+
+:range_graphisme_update_start
+do (<-destruction_range 1)
+	SetImageScale(Self "shield" I div(1.5) I div(1.5))
+	delay(1)
+loop
+@range_graphisme_update
+
+:range_graphisme_update
+SetImageScale(Self "shield" <-destruction_range div(1.5) <-destruction_range div(1.5))
+
+:destruction_temps_restant2
+"Destruction duration : " ->string
+<-destruction_count ->frames
+round(div(asfloat(<-frames) 30.0) 2) ->frames_number_formatted
+concat(<-string <-frames) ->function_value
+<-function_value
+
+
+:destruction_temps_restant
+"Destruction Countdown : " ->string
+GetTimer0 ->frames
+round(div(asfloat(<-frames) 30.0) 2) ->frames_number_formatted
+concat(<-string <-frames) ->function_value
+<-function_value
+
+:destruction_portee
+"Destruction Range : " ->string
+concat(<-string <-destruction_range) ->function_value
+<-function_value
+
+:unit_info
+if(<-unit_infos_afficher)
+	"Destructeur informations : " ->unit_info
+	concat(<-unit_info @ligne) ->unit_info
+	concat(<-unit_info @destruction_temps_restant) ->unit_info
+	concat(<-unit_info @ligne) ->unit_info
+	concat(<-unit_info @destruction_temps_restant2) ->unit_info
+	concat(<-unit_info @ligne) ->unit_info
+	concat(<-unit_info @destruction_portee) ->unit_info
+	concat(<-unit_info @ligne) ->unit_info
+	concat(<-unit_info @destruction_range_creeper_aid_infos) ->unit_info
+	SetPopupText(<-unit_info)
+else
+	SetPopupText("")
+endif
+
+:ligne
+"
+" ->ligne_string
+<-ligne_string
+
+
+:debug
+->debug
+if(<-debug)
+	ClearTraceLog
+	ShowTraceLog
+else
+	ClearTraceLog
+	HideTraceLog
+endif
+
+:gameloaded
+	@unit_info
+	
+:awake
+	@unit_info

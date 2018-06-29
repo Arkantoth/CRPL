@@ -1,0 +1,15 @@
+# Shield
+# Created on: 2/12/2014 4:00:08 AM
+# ------------------------------------------
+
+$fieldStrength:10000
+$range:24
+
+once
+	SetImage(Self "shield" "Custom2_256")
+	SetImageColor(Self "shield" 255 255 255 0)
+	SetImageScale(Self "shield" <-range div(1.5) <-range div(1.5))
+endonce
+
+EnableTowerField(<-range <-fieldStrength mul(-1) <-fieldStrength mul (-1) 0 FALSE)
+SetImageColor(Self "shield" 255 255 255 255)

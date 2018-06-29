@@ -1,0 +1,71 @@
+# start.crpl
+# Created on: 1/21/2015 5:01:45 PM
+# ------------------------------------------
+
+# Cleanup script
+
+$creeper_create_radius:10
+$creeper_create_amount:10
+
+once
+	OperateWhilePaused(TRUE)
+	PauseGame
+	@clear_digitalis
+	@clear_runners
+	@clear_sattelite
+	@clear_creeper
+	@creeper_form(<-creeper_create_radius <-creeper_create_amount)
+	SetGameTime(0)
+	OperateWhilePaused(FALSE)
+endonce
+
+:clear_creeper
+do(MapHeight 0)
+	do(MapWidth 0)
+		SetCreeper(I J 0)
+	loop
+loop
+delay(1)
+
+:clear_digitalis
+do(MapHeight 0)
+	do(MapWidth 0)
+		SetDigitalis(I J 0)
+		SetDigitalisGrowth(I J false)
+	loop
+loop
+delay(1)
+
+:clear_runners
+do (GetAllUnitsInRange(0 0 9999 0) 0)
+	->unitUID
+	if (GetUnitType(<-unitUID) eq("RUNNER"))
+		Trace(GetUnitType(<-unitUID))
+		destroy(<-unitUID 0)
+	endif
+loop
+delay(1)
+
+:clear_sattelite
+GetCoresWithVar("sattelited" "") ->sattelite_orphaned_count
+do(<-sattelite_orphaned_count 0)
+	->variable
+	destroy(<-variable 0)
+loop
+delay(1)
+
+:creeper_form
+->creeper_amount ->distance 
+SetCreeperFlowRate(0)
+trace2 ("distance :"  <-distance)
+trace2 ("creeper amount :" <-creeper_amount )
+do(CurrentX add(<-distance) CurrentX sub(<-distance))
+	do(CurrentY add(<-distance) CurrentY sub(<-distance))
+		if(distance(CurrentX CurrentY I J) lt(<-distance))
+			Trace5 ( " X : [" I " ] Y  : [" J " creeper")
+			SetCreeperNoLower(I J <-creeper_amount)
+		endif
+	loop
+loop
+delay(1)
+SetCreeperFlowRate(0.2)
